@@ -1,0 +1,10 @@
+# Python virtual environments
+venv/
+.venv/
+.venv311/
+.venv*/
+*/
+
+# If someone names a venv like env, env2, etc.
+env/
+env*/

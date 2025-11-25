@@ -1,0 +1,14 @@
+.bar {
+    display: flex;
+    flex-direction: row;
+    padding: 16px;
+    width: 100%;
+    background: #ccc;
+    align-items: center;
+    gap: 16px;
+}
+
+.intro {
+    padding: 8px; 
+    flex-grow: 1;
+}

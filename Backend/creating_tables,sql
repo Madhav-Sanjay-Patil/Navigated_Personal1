@@ -1,0 +1,89 @@
+CREATE TABLE IF NOT EXISTS Resources (
+    resource_id INTEGER PRIMARY KEY,
+    resource_name VARCHAR(2),
+    resource_description VARCHAR(2),
+    resource_learner_id INTEGER,
+    resource_keywords VARCHAR(2),
+    resource_polyline VARCHAR(2),
+    resource_x_coordinate INTEGER,
+    resource_y_coordinate INTEGER,
+    resource_course_id INTEGER,
+    resource_embedding VARCHAR(2),
+    resource_weight INTEGER,
+    FOREIGN KEY (resource_learner_id) REFERENCES Learners(learner_id),
+    FOREIGN KEY (resource_course_id) REFERENCES Courses(course_id)
+);
+CREATE TABLE IF NOT EXISTS Topics (
+    topic_id INTEGER PRIMARY KEY,
+    topic_name VARCHAR(2),
+    topic_description VARCHAR(2),
+    topic_learner_id INTEGER,
+    topic_keywords VARCHAR(2),
+    topic_polyline VARCHAR(2),
+    topic_x_coordinate INTEGER,
+    topic_y_coordinate INTEGER,
+    topic_course_id INTEGER,
+    topic_embedding VARCHAR(2),
+    topic_weight INTEGER,
+    FOREIGN KEY (topic_learner_id) REFERENCES Learners(learner_id),
+    FOREIGN KEY (topic_course_id) REFERENCES Courses(course_id)
+);
+
+CREATE TABLE IF NOT EXISTS Learners (
+    learner_id INTEGER PRIMARY KEY,
+    enrolled_date TIMESTAMP,
+    learner_enrolment_id INTEGER,
+    learner_name VARCHAR(2),
+    learner_course_id INTEGER,
+    learner_final_grade VARCHAR(2),
+    FOREIGN KEY (learner_course_id) REFERENCES Courses(course_id)
+);
+
+CREATE TABLE IF NOT EXISTS Courses (
+    course_id INTEGER PRIMARY KEY,
+    course_name VARCHAR(2),
+    course_description VARCHAR(2),
+    course_learner_id INTEGER,
+    course_topic_id INTEGER,
+    course_resource_id INTEGER,
+    course_enrolment_id INTEGER,
+    FOREIGN KEY (course_learner_id) REFERENCES Learners(learner_id),
+    FOREIGN KEY (course_topic_id) REFERENCES Topics(topic_id),
+    FOREIGN KEY (course_resource_id) REFERENCES Resources(resource_id),
+    FOREIGN KEY (course_enrolment_id) REFERENCES Enrolls(enrollment_id)
+);
+
+CREATE TABLE IF NOT EXISTS Activity (
+    activity_id INTEGER PRIMARY KEY,
+    activity_type DATETIME,
+    activity_type_id INTEGER,
+    activity_learner_id INTEGER,
+    created_at TIMESTAMP,
+    FOREIGN KEY (activity_learner_id) REFERENCES Learners(learner_id)
+);
+
+CREATE TABLE IF NOT EXISTS Enrolls (
+    enrollment_id INTEGER PRIMARY KEY,
+    learner_id INTEGER,
+    course_id INTEGER,
+    enrolment_x_coordinate INTEGER,
+    enrolment_y_coordinate INTEGER,
+    FOREIGN KEY (learner_id) REFERENCES Learners(learner_id),
+    FOREIGN KEY (course_id) REFERENCES Courses(course_id)
+);
+
+CREATE TABLE IF NOT EXISTS Contribution (
+    contribution_id INTEGER PRIMARY KEY,
+    contribution_learner_id INTEGER,
+    contribution_course_id INTEGER,
+    contribution_mandate_id INTEGER,
+    contribution_file_path VARCHAR(2),
+    contribution_description VARCHAR(2),
+    contribution_polyline VARCHAR(2),
+    contribution_x_coordinate INTEGER,
+    contribution_y_coordinate INTEGER,
+    contribution_embedding VARCHAR(2),
+    contribution_weight INTEGER,
+    FOREIGN KEY (contribution_learner_id) REFERENCES Learners(learner_id),
+    FOREIGN KEY (contribution_course_id) REFERENCES Courses(course_id)
+);
