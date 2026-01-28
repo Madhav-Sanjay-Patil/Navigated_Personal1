@@ -571,6 +571,7 @@ export const TopicLineComponent = ({
     xScale,
     yScale,
     minPoint,
+    onClick,
 }) => {
     const handleMouseOver = (event) => {
         const tooltip = d3.select(tooltipRef.current);
@@ -604,15 +605,17 @@ export const TopicLineComponent = ({
 
     const inverseScale = Math.min(1 / transform.k, 1.1);
 
+    if (!minPoint || !coords) return null;
+
     return (
-        <g>
+        <g onClick={onClick} style={{ cursor: "pointer" }}>
             <line
                 x1={xScale(minPoint.x)}
                 y1={yScale(minPoint.y)}
                 x2={xScale(coords.x)}
                 y2={yScale(coords.y)}
                 stroke="#cccd"
-                strokeWidth={3 * inverseScale}
+                strokeWidth={10 * inverseScale}
                 strokeDasharray={"5 2"}
                 onMouseOver={handleMouseOver}
                 onMouseMove={handleMouseMove}

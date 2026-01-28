@@ -2,6 +2,8 @@
 // It fetches and manages course-specific data, including enrolled learners, modules, and topics. The component also handles 
 // displaying learner activity, showing/hiding a learner's polyline, and provides options to add new resources and quizzes to the course.
 import React, { useEffect, useRef, useState } from "react";
+import ClusterTable from "/Users/madhavsanjaypatil/Documents/dcp/Interview/Navigated_React-main/frontend/src/Components/ClusterTable.jsx";
+
 import {
     colStyleLeft,
     completeHeaderStyle,
@@ -54,7 +56,7 @@ const TeacherNavigation = ({
     const [moduleData, setModuleData] = useState([]);
     const [enrollId, setEnrollId] = useState(null);
     const [enrollPolyline, setEnrollPolyline] = useState([]);
-
+    const [selectedTopicId, setSelectedTopicId] = useState(null);
     // console.log("enrollId is ", JSON.parse(localStorage.getItem("currentLearner"))?.enroll_id);
     console.log("enrolledLearner: ", enrolledLearner);
     // console.log("currentLearner in index.js is : ", JSON.parse(localStorage.getItem("currentLearner")));
@@ -104,19 +106,20 @@ const TeacherNavigation = ({
         const response = await getResponseGet(`/topics/${courseId}`);
         if (response) {
             setTopicData(response.data);
-            // console.log("this is the topics data", response.data);
+            // Auto-select first topic if available and none selected
+            if (response.data && response.data.length > 0 && !selectedTopicId) {
+                setSelectedTopicId(response.data[0].id);
+            }
         }
     };
 
     const loadEnrollData = async (learnerId) => {
         const response = await getResponseGet(
             `enrolledLearner/${learnerId}/${courseId}`
-        ); // add course id afterwards
+        );
         if (response?.data) {
             setEnrolledLearner(response.data);
             setEnrollPolyline(currLearner?.polyline);
-            // console.log("Enrolled Learner", enrolledLearner);
-            // Update learner position state with the new coordinates if they exist
             if (response.data.x_coordinate && response.data.y_coordinate) {
                 learnerPosState[1]([
                     Number(response.data.x_coordinate),
@@ -131,7 +134,7 @@ const TeacherNavigation = ({
     const loadEnrollersBycourse = async (courseId) => {
         const response = await getResponseGet(
             `enrolledLearnersByCourse/${courseId}`
-        ); // add course id afterwards
+        );
         if (response?.data) {
             setEnrolledLearnersByCourse(response.data);
             console.log("All Enrolled Learners", response.data);
@@ -139,24 +142,25 @@ const TeacherNavigation = ({
             console.error("Failed to fetch enrolled learners", response);
         }
     };
+
     const loadEnrolledCourses = async (learnerId) => {
         const response = await getResponseGet(`enrolledCourses/${learnerId}`);
         if (response?.data) {
-            // console.log("Enrolled courses", response.data);
             setEnrolledCourses(response.data);
         } else {
             console.error("Failed to fetch enrolled courses", response);
         }
     };
+
     const loadEnrolledPolylines = async (id) => {
         if (!id) {
             console.log("id not found");
-            return; // Prevent API call if enrollId is undefined
+            return;
         }
         const response = await getResponseGet(`enrolledPolylines/${id}`);
         if (response?.data) {
             setEnrolledPolylines(response.data);
-            setEnrollPolyline(currLearner?.polyline); // Also update local polyline state
+            setEnrollPolyline(currLearner?.polyline);
         } else {
             console.error("Could not load learner polyline!", response);
         }
@@ -165,7 +169,6 @@ const TeacherNavigation = ({
     const loadCourse = async (courseId) => {
         const response = await getResponseGet(`course/${courseId}`);
         if (response?.data) {
-            // console.log("course is", response.data);
             setCourse(response.data);
         } else {
             console.error("Failed to fetch the course", response);
@@ -175,12 +178,12 @@ const TeacherNavigation = ({
     const loadActivityData = async (enrollId) => {
         const response = await getResponseGet(`activities/${enrollId}`);
         if (response?.data) {
-            // console.log("Loaded Activities", response.data);
             activitiesState[1](response.data);
         } else {
             console.error("Failed to fetch activities data", response);
         }
     };
+
     useEffect(() => {
         loadModuleData(courseId);
         loadTopicData(courseId);
@@ -194,13 +197,9 @@ const TeacherNavigation = ({
             loadEnrollData(learnerId);
         }
     }, [learnerId]);
-    // const enrollId =enrolledLearner.enroll_id;
-    // console.log("enrollid is ", enrollId);
-    // console.log("plyline is ", enrollPolyline);
-    // console.log("polyline is ",currLearner?.polyline);
+
     useEffect(() => {
         if (enrollId) {
-            // loadActivityData(enrollId);
             loadEnrolledPolylines(enrollId);
         }
     }, [enrollId]);
@@ -216,11 +215,11 @@ const TeacherNavigation = ({
         setShowSummmary(false);
         setOpen(true);
     };
+
     const handleCloseAlert = (event, reason) => {
         if (reason === "clickaway") {
             return;
         }
-
         setOpen(false);
     };
 
@@ -228,137 +227,176 @@ const TeacherNavigation = ({
         setShowSummmary((curr) => !curr);
         setTarget(event.target);
     }
+
     return (
-        <>
-            <div style={containerStyle}>
-                <div style={completeHeaderStyle}>
-                    <div className="header" style={headerStyle}>
-                        <Button onClick={() => {
-                            localStorage.removeItem("type");
-                            navigate("/dashboard");
-                        }}>
-                            <i class="fa fa-chevron-left"></i>
-                        </Button>
+      <>
+        <div style={containerStyle}>
+          <div style={completeHeaderStyle}>
+            <div className="header" style={headerStyle}>
+              <Button
+                onClick={() => {
+                  localStorage.removeItem("type");
+                  navigate("/dashboard");
+                }}
+              >
+                <i className="fa fa-chevron-left"></i>
+              </Button>
 
-                        <div style={titleSectionStyle}>
-                            <h1>{course.name} </h1>
-                        </div>
+              <div style={titleSectionStyle}>
+                <h1>{course.name} </h1>
+              </div>
 
-                        <div style={{ flexGrow: 1 }} />
+              <div style={{ flexGrow: 1 }} />
 
-                        <div>
-                            <LetterAvatar setIsLoggedIn={setIsLoggedIn} />
-                            <h6>{localStorage.getItem("name")}</h6>
-                        </div>
-                    </div>
-                    <span style={{ fontSize: "12px" }} id="description" className="">
-                        {course.description}
-                    </span>
-                </div>
-                <div
-                    style={{
-                        display: "flex",
-                        justifyContent: "flex-end",
-                        padding: "8px",
-                        gap: "8px",
-                    }}
-                >
-                    <Button onClick={() => {
-                        setAddResVisible(true);
-                    }}>
-                        Add Resource
-                    </Button>
-                    <Button onClick={() => {
-                        setAddExitVisible(true);
-                    }}>
-                        Add Exit Point
-                    </Button>
-                    <Button onClick={() => {
-                        sessionStorage.setItem('course_id', courseId);
-                        navigate("/create-quiz"); // Navigate to /create-quiz
-                    }}>
-                        Add New Quiz
-                    </Button>
-
-                </div>
-                <div style={{ display: "flex" }}>
-                    <div id="learner-map" style={colStyleLeft}>
-                        {/* Learner map */}
-                        <TeacherMap
-                            activitiesState={activitiesState}
-                            learnerPosState={learnerPosState}
-                            svgRef={svgRef}
-                            zoomRef={zoomRef}
-                            enrollId={enrollId}
-                            enrolledLearnersByCourse={enrolledLearnersByCourse}
-                            courseId={courseId}
-                            needsReload={resNeedReload}
-                        />
-                    </div>
-
-                    {(activitiesState[0].length > 0) && (
-                        <div style={dropdownSectionStyle}>
-                            <br />
-                            <Button onClick={() => setOpenPoly((curr) => !curr)}>
-                                See polyline
-                            </Button>
-                            <br />
-                            <BootstrapDialog
-                                onClose={handleClose}
-                                aria-labelledby="customized-dialog-title"
-                                open={openPoly}
-                            >
-                                <DialogTitle sx={{ m: 0, p: 2 }} id="customized-dialog-title">
-                                    Learner Polyline
-                                </DialogTitle>
-                                <IconButton
-                                    aria-label="close"
-                                    onClick={handleClose}
-                                    sx={(theme) => ({
-                                        position: 'absolute',
-                                        right: 8,
-                                        top: 8,
-                                        color: theme.palette.grey[500],
-                                    })}
-                                >
-                                    <CloseIcon />
-                                </IconButton>
-                                <DialogContent>
-                                    {currLearner?.polyline
-                                        ? <PolylineChart polyline={enrollPolyline} topicData={topicData} />
-                                        : <div>Could not load learner polyline!</div>
-                                    }
-                                </DialogContent>
-                            </BootstrapDialog>
-                            <br />
-                            <Button onClick={() => navigate('/polylines-list')}>
-                                Polylines List
-                            </Button>
-                        </div>
-                    )}
-
-                    <div id="learning-journey" style={colStyleRight}>
-                        <Activity
-                            activitiesState={activitiesState}
-                            enrolledLearnersByCourse={enrolledLearnersByCourse}
-                            setLearnersRefresh={setLearnersRefresh}
-                        />
-                    </div>
-                </div>
-                <AddResource
-                    show={addResVisible}
-                    onHide={() => setAddResVisible(false)}
-                    courseId={courseId}
-                    onSuccess={() => setResNeedReload(true)}
-                />
-                <AddExitPoint
-                    show={addExitVisible}
-                    onHide={() => setAddExitVisible(false)}
-                    courseId={courseId}
-                    onSuccess={() => setResNeedReload(true)}
-                />
+              <div>
+                <LetterAvatar setIsLoggedIn={setIsLoggedIn} />
+                <h6>{localStorage.getItem("name")}</h6>
+              </div>
             </div>
-        </>
+            <span style={{ fontSize: "12px" }} id="description" className="">
+              {course.description}
+            </span>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              padding: "8px",
+              gap: "8px",
+            }}
+          >
+            <Button
+              onClick={() => {
+                setAddResVisible(true);
+              }}
+            >
+              Add Resource
+            </Button>
+            <Button
+              onClick={() => {
+                setAddExitVisible(true);
+              }}
+            >
+              Add Exit Point
+            </Button>
+            <Button
+              onClick={() => {
+                sessionStorage.setItem("course_id", courseId);
+                navigate("/create-quiz");
+              }}
+            >
+              Add New Quiz
+            </Button>
+          </div>
+          
+          {/* Topic Selection List */}
+          <div style={{ padding: "10px", backgroundColor: "#f8f9fa", borderBottom: "1px solid #ddd" }}>
+            <strong>Select Topic: </strong>
+            {topicData.map((t) => (
+              <Button 
+                key={t.id} 
+                variant={selectedTopicId === t.id ? "primary" : "outline-primary"}
+                size="sm"
+                style={{ marginRight: "5px", marginBottom: "5px" }}
+                onClick={() => setSelectedTopicId(t.id)}
+              >
+                {t.name}
+              </Button>
+            ))}
+          </div>
+
+          <div style={{ display: "flex" }}>
+            <div id="learner-map" style={colStyleLeft}>
+              {/* Learner map */}
+              <TeacherMap
+                activitiesState={activitiesState}
+                learnerPosState={learnerPosState}
+                svgRef={svgRef}
+                zoomRef={zoomRef}
+                enrollId={enrolledLearner?.enroll_id}
+                enrolledLearnersByCourse={enrolledLearnersByCourse}
+                courseId={courseId}
+                needsReload={resNeedReload}
+                selectedTopicId={selectedTopicId}
+                setSelectedTopicId={setSelectedTopicId}
+              />
+            </div>
+
+            {activitiesState[0].length > 0 && (
+              <div style={dropdownSectionStyle}>
+                <br />
+                <Button onClick={() => setOpenPoly((curr) => !curr)}>
+                  See polyline
+                </Button>
+                <br />
+                <BootstrapDialog
+                  onClose={handleClose}
+                  aria-labelledby="customized-dialog-title"
+                  open={openPoly}
+                >
+                  <DialogTitle sx={{ m: 0, p: 2 }} id="customized-dialog-title">
+                    Learner Polyline
+                  </DialogTitle>
+                  <IconButton
+                    aria-label="close"
+                    onClick={handleClose}
+                    sx={(theme) => ({
+                      position: "absolute",
+                      right: 8,
+                      top: 8,
+                      color: theme.palette.grey[500],
+                    })}
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                  <DialogContent>
+                    {currLearner?.polyline ? (
+                      <PolylineChart
+                        polyline={enrollPolyline}
+                        topicData={topicData}
+                      />
+                    ) : (
+                      <div>Could not load learner polyline!</div>
+                    )}
+                  </DialogContent>
+                </BootstrapDialog>
+                <br />
+                <Button onClick={() => navigate("/polylines-list")}>
+                  Polylines List
+                </Button>
+              </div>
+            )}
+
+            <div id="learning-journey" style={colStyleRight}>
+              <Activity
+                activitiesState={activitiesState}
+                enrolledLearnersByCourse={enrolledLearnersByCourse}
+                setLearnersRefresh={setLearnersRefresh}
+              />
+            </div>
+          </div>
+          <AddResource
+            show={addResVisible}
+            onHide={() => setAddResVisible(false)}
+            courseId={courseId}
+            onSuccess={() => setResNeedReload(true)}
+          />
+          <AddExitPoint
+            show={addExitVisible}
+            onHide={() => setAddExitVisible(false)}
+            courseId={courseId}
+            onSuccess={() => setResNeedReload(true)}
+          />
+        </div>
+        <ClusterTable
+          courseId={courseId}
+          topicId={selectedTopicId} // ensure this variable exists in that component
+          onHighlightCluster={(cluster) => {
+            // if TeacherMap is sibling, you may need to lift state
+            console.log("teacher nav highlight", cluster);
+          }}
+        />
+      </>
     );
 };
 

@@ -25,6 +25,8 @@ mysql: MySQL = MySQL(app)
 DBcreated: bool = False
 
 # init.py (after db = SQLAlchemy(app))
+# from routes_clusters import clusters_bp
+# app.register_blueprint(clusters_bp)
 
 
 

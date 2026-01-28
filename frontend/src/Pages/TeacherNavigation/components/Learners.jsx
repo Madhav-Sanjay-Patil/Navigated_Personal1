@@ -1,5 +1,4 @@
 // Learners.jsx
-
 import * as d3 from "d3";
 import { getResponseGet } from "../../../lib/utils";
 
@@ -81,7 +80,7 @@ const Learners = ({
   const inverseScale = Math.min(1 / transform.k, 1.1);
 
   const clusterStyle =
-    showClusters && cluster_id
+    showClusters && (cluster_id !== null && cluster_id !== undefined)
       ? getClusterStyle(cluster_id)
       : {
           shape: "rect",
@@ -235,7 +234,7 @@ const Learners = ({
         </text>
 
         {/* Cluster badge */}
-        {showClusters && cluster_id != null && (
+        {showClusters && cluster_id !== null && cluster_id !== undefined && (
           <g>
             <circle
               cx={xScale(pos[0]) + 25 * inverseScale}

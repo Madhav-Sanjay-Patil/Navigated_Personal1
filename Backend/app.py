@@ -395,10 +395,11 @@ def submit_learning_summary():
     data = request.get_json() or {}
     enroll_id = data.get("enroll_id")
     course_id = data.get("course_id")
+    topic_id = data.get("topic_id")
     summary_text = data.get("summary_text", "")
 
-    if not enroll_id or not course_id or not summary_text:
-        return jsonify({"error": "Missing enroll_id, course_id or summary_text"}), 400
+    if not enroll_id or not course_id or not topic_id or not summary_text:
+        return jsonify({"error": "Missing enroll_id, course_id, topic_id or summary_text"}), 400
 
     enroll = Enroll.query.get(enroll_id)
     if not enroll:
@@ -423,7 +424,8 @@ def submit_learning_summary():
     sc = SummaryCoordinates(
         enroll_id=enroll_id,
         course_id=course_id,
-        summary=summary_text,   # JSON/text; you can wrap in dict if you prefer
+        topic_id=topic_id,
+        summary=summary_text,
         polyline=polyline_json,
         x_coordinate=x,
         y_coordinate=y
@@ -437,8 +439,8 @@ def submit_learning_summary():
 
     db.session.flush()  # ensure sc.id is available
 
-    # ---- 5. Recompute clusters for this course ----
-    all_summaries = SummaryCoordinates.query.filter_by(course_id=course_id).all()
+    # ---- 5. Recompute clusters for this specific COURSE + TOPIC ----
+    all_summaries = SummaryCoordinates.query.filter_by(course_id=course_id, topic_id=topic_id).all()
 
     poly_arrays = []
     keywords_per_summary = []
@@ -453,8 +455,8 @@ def submit_learning_summary():
 
     labels, top_keywords = cluster_summaries(poly_arrays, keywords_per_summary)
 
-    # ---- 6. Recreate SummaryCluster rows for this course ----
-    SummaryCluster.query.filter_by(course_id=course_id).delete()
+    # ---- 6. Recreate SummaryCluster rows for this course + topic ----
+    SummaryCluster.query.filter_by(course_id=course_id, topic_id=topic_id).delete()
     db.session.flush()
 
     # Compute cluster centroids from (x,y) of each SummaryCoordinates
@@ -474,6 +476,7 @@ def submit_learning_summary():
         cy = sum(p[1] for p in pts) / len(pts)
         cluster = SummaryCluster(
             course_id=course_id,
+            topic_id=topic_id,
             cluster_index=int(lab),
             centroid_x=cx,
             centroid_y=cy,
@@ -483,7 +486,7 @@ def submit_learning_summary():
         db.session.flush()
         clusters_by_index[lab] = cluster
 
-    # ---- 7. Attach cluster_id to SummaryCoordinates ----
+    # ---- 7. Attach cluster_id (primary key) to SummaryCoordinates ----
     for row, lab in zip(all_summaries, labels):
         cluster_obj = clusters_by_index.get(int(lab))
         if cluster_obj:

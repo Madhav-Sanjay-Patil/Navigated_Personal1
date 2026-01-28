@@ -20,6 +20,9 @@ import { useNavigate } from "react-router-dom";
 import { ButtonGroup, Button, Dropdown, DropdownButton } from "react-bootstrap";
 import { getResponseGet } from "../lib/utils";
 import PolylineChart from "./PolylineChart";
+import ClusterTable from "/Users/madhavsanjaypatil/Documents/dcp/Interview/Navigated_React-main/frontend/src/Components/ClusterTable.jsx"; // adjust path if file location differs
+// if Dashboard lives under src/Pages, use ../Components/ClusterTable
+
 
 export const containerStyle = {
   width: "100%",
@@ -532,6 +535,20 @@ const Dashboard = ({
               setLearnerAtResourcePos={setLearnerAtResourcePos}
               learnerPosState={learnerPosState}
               enrollId={enrolledLearner?.enroll_id}
+            />
+
+            {/* CLUSTERS TABLE: teacher view for topic clustering */}
+            <ClusterTable
+              courseId={courseId}
+              topicId={
+                /* use your selectedTopicId prop/state here */ selectedTopicId ||
+                (topicData && topicData[0]?.id)
+              }
+              onHighlightCluster={(cluster) => {
+                // optional: call something that highlights cluster on the map
+                // you can pass this to TeacherMap by lifting state or using an event emitter
+                console.log("Highlight cluster", cluster);
+              }}
             />
           </div>
         </div>

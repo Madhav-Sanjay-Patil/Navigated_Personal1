@@ -1,6 +1,7 @@
 // TeacherMap.js
 
 import React, { useEffect, useRef, useState } from "react";
+
 import * as d3 from "d3";
 import { getResponseGet } from "../../../lib/utils";
 import {
@@ -27,6 +28,7 @@ const TeacherMap = ({
   courseId,
   needsReload,
   selectedTopicId,
+  setSelectedTopicId,
 }) => {
   const [data, setData] = useState([]);
   const [moduleData, setModuleData] = useState([]);
@@ -45,7 +47,7 @@ const TeacherMap = ({
   const tooltipRef = useRef(null);
   const [coverageRadius] = useState(300);
   const inverseScale = Math.min(1 / transform.k, 1.1);
-
+  // const [selectedTopicId, setSelectedTopicId] = useState(null); // Removed local state
   const [showJourney, setShowJourney] = useState(false);
   const [showHex, setShowHex] = useState(false);
   const [showAllLearners, setShowAllLearners] = useState(true);
@@ -53,8 +55,8 @@ const TeacherMap = ({
   const [showResources, setShowResources] = useState(true);
   const [isDrag, setIsDrag] = useState(false);
   const [topicsLinesCoords, setTopicsLinesCoords] = useState([]);
-  const [showTopicLines, setShowTopicLines] = useState(false);
-  const [showClusters, setShowClusters] = useState(false);
+  const [showTopicLines, setShowTopicLines] = useState(true);
+  const [showClusters, setShowClusters] = useState(true);
 
   const [newPos, setNewPos] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -176,11 +178,12 @@ const TeacherMap = ({
           const keywordsMap = {}; // cluster_id -> [keywords]
 
           response.data.clusters.forEach((cluster) => {
-            const cid = cluster.cluster_id;
+            const cid = cluster.cluster_index;
             keywordsMap[cid] = cluster.top_keywords || [];
 
             (cluster.learners || []).forEach((learner) => {
-              assignments[learner.enroll_id] = cid;
+              // Convert to string to ensure consistent key type
+              assignments[String(learner.enroll_id)] = cid;
             });
           });
 
@@ -189,7 +192,11 @@ const TeacherMap = ({
 
           console.log("Loaded cluster assignments:", assignments);
           console.log("Loaded cluster keywords:", keywordsMap);
+          console.log("Raw cluster response:", response.data);
+          console.log("Number of learners with cluster assignments:", Object.keys(assignments).length);
+          console.log("Sample enroll_ids from assignments:", Object.keys(assignments).slice(0, 5));
         } else {
+          console.log("No clusters found in response");
           setClusterAssignments({});
           setClusterKeywords({});
         }
@@ -394,7 +401,7 @@ const TeacherMap = ({
             </>
           )}
 
-          {showTopicLines && topicsData && topicsData.length > 0 && (
+          {showTopicLines && minPoint && topicsData && topicsData.length > 0 && topicsLinesCoords.length > 0 && (
             <>
               {topicsData.map((d, idx) => (
                 <React.Fragment key={d.id}>
@@ -406,6 +413,10 @@ const TeacherMap = ({
                     xScale={xScale}
                     yScale={yScale}
                     minPoint={minPoint}
+                    onClick={() => {
+                        console.log("Clicked topic:", d.id);
+                        if (setSelectedTopicId) setSelectedTopicId(d.id);
+                    }}
                   />
                 </React.Fragment>
               ))}
@@ -415,22 +426,27 @@ const TeacherMap = ({
           {/* Learners */}
           {enrolledLearnersByCourse.length > 0 ? (
             showAllLearners ? (
-              enrolledLearnersByCourse.map((d) => (
-                <React.Fragment key={d.enroll_id}>
-                  <Learners
-                    enroll_id={d.enroll_id}
-                    tooltipRef={tooltipRef}
-                    transform={transform}
-                    xScale={xScale}
-                    yScale={yScale}
-                    enrolledLearner={d}
-                    activitiesState={activitiesState}
-                    // 🔹 cluster from backend summary_clusters endpoint
-                    cluster_id={clusterAssignments[d.enroll_id]}
-                    showClusters={showClusters}
-                  />
-                </React.Fragment>
-              ))
+              enrolledLearnersByCourse.map((d) => {
+                // Convert to string to match the key type in assignments
+                const clusterId = clusterAssignments[String(d.enroll_id)];
+                console.log(`Learner ${d.learner_name} (enroll_id: ${d.enroll_id}) -> Cluster: ${clusterId}`);
+                return (
+                  <React.Fragment key={d.enroll_id}>
+                    <Learners
+                      enroll_id={d.enroll_id}
+                      tooltipRef={tooltipRef}
+                      transform={transform}
+                      xScale={xScale}
+                      yScale={yScale}
+                      enrolledLearner={d}
+                      activitiesState={activitiesState}
+                      // 🔹 cluster from backend summary_clusters endpoint
+                      cluster_id={clusterId}
+                      showClusters={showClusters}
+                    />
+                  </React.Fragment>
+                );
+              })
             ) : null
           ) : (
             <div>Loading or no data available</div>

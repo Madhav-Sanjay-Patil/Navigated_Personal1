@@ -1,3 +1,4 @@
+# modelRoutes.py
 import gc
 import json
 import math
@@ -11,7 +12,7 @@ import torch
 from flask import jsonify, request, send_from_directory
 from utils import is_valid_id
 from repository import add_ta_from_user
-from dbModels import TAT, Activity, Contribution, Course, Enroll, Learner, Module, Question, Quiz, Resource, Topic, UserQuiz, db, Description,ExitPoint
+from dbModels import TAT, Activity, Contribution, Course, Enroll, Learner, Module, Question, Quiz, Resource, Topic, UserQuiz, db, Description, ExitPoint, SummaryCluster, SummaryCoordinates, User
 from init import app
 from keybert import KeyBERT
 from sentence_transformers import SentenceTransformer
@@ -21,7 +22,6 @@ from transformers import BertModel, BertTokenizer
 from werkzeug.utils import secure_filename
 from youtube_transcript_api import YouTubeTranscriptApi
 
-
 UPLOAD_FOLDER_NAME = "uploads"
 UPLOAD_FOLDER = os.path.join(os.getcwd(), UPLOAD_FOLDER_NAME)  # Save files in a 'uploads' folder in the project directory
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Create the folder if it doesn't exist
@@ -29,16 +29,6 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # Create the folder if it doesn't exi
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 def get_cos_sim(a: np.ndarray, b: np.ndarray) -> float:
-    """
-    Calculate the cosine similarity between two vectors.
-
-    Parameters:
-        a (np.ndarray): First vector.
-        b (np.ndarray): Second vector.
-
-    Returns:
-        float: Cosine similarity between the two vectors.
-    """
     dot_product = np.dot(a, b)
     norm_a = np.linalg.norm(a)
     norm_b = np.linalg.norm(b)
@@ -48,8 +38,6 @@ def get_cos_sim(a: np.ndarray, b: np.ndarray) -> float:
 # Routes
 
 # Learners
-
-
 @app.route('/learners', methods=['GET'])
 def get_learners():
     learners = Learner.query.all()
@@ -70,8 +58,6 @@ def create_learner():
     return jsonify(new_learner.to_dict()), 201
 
 # Courses
-
-
 @app.route('/course/<int:id>', methods=['GET'])
 def get_courses(id):
     course = Course.query.filter_by(id=id).first()
@@ -91,20 +77,16 @@ def create_course():
     return jsonify(new_course.to_dict()), 201
 
 # Resources
-
 @app.route("/resource-types", methods=['GET'])
 def get_resource_types():
     return jsonify([
         { "type" : "0", "name" : "PDF"},
         { "type" : "1", "name" : "Youtube Video"},
-        # { "type" : "2", "name" : "Quiz"}, :)
     ])
 
 @app.route('/resources/<int:id>', methods=['GET'])
 def get_resources(id):
     resources = Resource.query.filter_by(course_id=id)
-    # print("resources are ")
-    # print([resource.to_dict() for resource in resources])
     return jsonify([resource.to_dict() for resource in resources])
 
 @app.route('/specific_resource/<int:id>', methods=['GET'])
@@ -124,16 +106,12 @@ def create_resource():
         y_coordinate=data['y_coordinate'],
         course_id=data['course_id'],
         type=data['type']
-        # ,
-        # embedding=data['embedding']
     )
     db.session.add(new_resource)
     db.session.commit()
     return jsonify(new_resource.to_dict()), 201
 
 # Topics
-
-
 @app.route('/topics/<int:id>', methods=['GET'])
 def get_topics(id):
     topics = Topic.query.filter_by(course_id=id)
@@ -158,8 +136,6 @@ def create_topic():
     return jsonify(new_topic.to_dict()), 201
 
 # Enrolls
-
-
 @app.route('/enrolls/<int:id>', methods=['GET'])
 def get_enroll(id):
     enroll = Enroll.query.get(id)
@@ -172,8 +148,6 @@ def get_teach(id):
 
 
 # Activities
-
-
 @app.route('/activities/<int:id>', methods=['GET'])
 def get_activities(id):
     activities = Activity.query.filter_by(enroll_id=id)
@@ -185,20 +159,18 @@ def create_activity():
     data = request.get_json()
     if data.get('resource_id') is not None:
         new_activity = Activity(
-        time=datetime.strptime(data['time'], '%Y-%m-%d %H:%M:%S'),
-        # type_id=data['type_id'],
-        type=data['type'],
-        name=data['name'],
-        link=data['link'],
-        enroll_id=data['enroll_id'],
-        resource_id=data['resource_id'],
-        x_coordinate=data['x_coordinate'],
-        y_coordinate=data['y_coordinate'],
-    )
+            time=datetime.strptime(data['time'], '%Y-%m-%d %H:%M:%S'),
+            type=data['type'],
+            name=data['name'],
+            link=data['link'],
+            enroll_id=data['enroll_id'],
+            resource_id=data['resource_id'],
+            x_coordinate=data['x_coordinate'],
+            y_coordinate=data['y_coordinate'],
+        )
     else:
         new_activity = Activity(
             time=datetime.strptime(data['time'], '%Y-%m-%d %H:%M:%S'),
-            # type_id=data['type_id'],
             type=data['type'],
             name=data['name'],
             link=data['link'],
@@ -212,18 +184,14 @@ def create_activity():
     return jsonify(new_activity.to_dict()), 201
 
 # Contributions
-
-
 @app.route('/contributions/<int:id>', methods=['GET'])
 def get_contributions(id):
     contributions = Contribution.query.filter_by(enroll_id=id)
-
     return jsonify([contribution.to_dict() for contribution in contributions])
 
 @app.route('/contributions/view/<int:id>', methods=['GET'])
 def get_contribution_view(id):
     contribution = Contribution.query.filter_by(id=id).first()
-
     return jsonify(contribution.to_dict())
 
 
@@ -247,23 +215,17 @@ def create_contribution():
     return jsonify(new_contribution.to_dict()), 201
 
 # Quizzes
-
-
 @app.route('/quizzes', methods=['GET'])
 def get_quizzes():
     quizzes = Quiz.query.all()
     return jsonify([quiz.to_dict() for quiz in quizzes])
 
-
 # Questions
-
-
 @app.route('/questions', methods=['GET'])
 def get_questions():
     quiz_id = request.args.get('quiz_id')
     questions = Question.query.filter_by(quiz_id=quiz_id).all()
     return jsonify([question.to_dict() for question in questions])
-
 
 @app.route('/questions', methods=['POST'])
 def create_question():
@@ -282,8 +244,6 @@ def create_question():
     return jsonify(new_question.to_dict()), 201
 
 # UserQuiz : log of quizzes attempted by various users
-
-
 @app.route('/user_quizzes', methods=['GET'])
 def get_user_quizzes():
     user_id = request.args.get('user_id')
@@ -311,7 +271,6 @@ def create_user_quiz():
 @app.route('/course_module_mappings/<int:course_id>', methods=['GET'])
 def course_module_mappings(course_id):
     try:
-        # Query for ModName_ModID mapping
         mod_name_mod_id_query = (
             db.session.query(Resource.module, Resource.module_id)
             .filter(Resource.course_id == course_id)
@@ -320,7 +279,6 @@ def course_module_mappings(course_id):
         )
         ModName_ModID = {row.module: row.module_id for row in mod_name_mod_id_query}
 
-        # Query for ModID_SubModCount mapping
         mod_id_submod_count_query = (
             db.session.query(Resource.module_id, func.count(Resource.submodule_id))
             .filter(Resource.course_id == course_id)
@@ -329,13 +287,14 @@ def course_module_mappings(course_id):
         )
         ModID_SubModCount = {row.module_id: row[1] for row in mod_id_submod_count_query}
 
-        # Return the mappings as JSON
         return jsonify({
             "ModName_ModID": ModName_ModID,
             "ModID_SubModCount": ModID_SubModCount
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
 
 # Function to create topic embeddings
 def create_topic_embeddings(topics: pd.DataFrame) -> list:
@@ -1451,6 +1410,97 @@ def get_exit_coordinates(course_id):
     ]
 
     return jsonify(coordinates), 200
+
+
+
+
+@app.route("/summary-clusters/<int:course_id>/<int:topic_id>", methods=["GET"])
+def get_summary_clusters(course_id, topic_id):
+    """
+    Return clusters for given course+topic:
+    {
+      "clusters": [
+        {
+          "cluster_index": 0,
+          "centroid_x": 0.123,
+          "centroid_y": 0.456,
+          "top_keywords": ["kw1","kw2",...],
+          "learners": [
+              {"enroll_id": 57, "learner_id": 35, "learner_name": "Alice", "x_coordinate": 0.12, "y_coordinate": 0.34},
+              ...
+          ]
+        }, ...
+      ]
+    }
+    """
+    # fetch cluster rows
+    clusters = (
+        SummaryCluster.query
+        .filter_by(course_id=course_id, topic_id=topic_id)
+        .order_by(SummaryCluster.cluster_index)
+        .all()
+    )
+
+    # early exit if none
+    if not clusters:
+        return jsonify({"clusters": []})
+
+    out = []
+    for cl in clusters:
+        # top_keywords stored as json/text — ensure we return array
+        top_keywords = cl.top_keywords if getattr(cl, "top_keywords", None) is not None else []
+
+        # find learners (enroll_id) assigned to this cluster for this topic
+        sc_rows = (
+            SummaryCoordinates.query
+            .filter_by(course_id=course_id, topic_id=topic_id, cluster_id=cl.cluster_index)
+            .all()
+        )
+
+        learners = []
+        for sc in sc_rows:
+            enroll_id = sc.enroll_id
+            # try to fetch learner name
+            enroll = Enroll.query.filter_by(id=enroll_id).first()
+            if enroll:
+                # depending on your schema enroll may have learner_id or user relation
+                learner = None
+                if hasattr(enroll, "learner_id"):
+                    learner = Learner.query.filter_by(id=enroll.learner_id).first()
+                elif hasattr(enroll, "user_id"):
+                    learner = User.query.filter_by(id=enroll.user_id).first()
+
+                learner_name = None
+                learner_id = None
+                if learner:
+                    learner_name = getattr(learner, "name", None) or getattr(learner, "learner_name", None)
+                    learner_id = getattr(learner, "id", None)
+
+                learners.append({
+                    "enroll_id": enroll_id,
+                    "learner_id": learner_id,
+                    "learner_name": learner_name or f"enroll:{enroll_id}",
+                    "x_coordinate": float(sc.x_coordinate) if sc.x_coordinate is not None else None,
+                    "y_coordinate": float(sc.y_coordinate) if sc.y_coordinate is not None else None,
+                })
+            else:
+                # fallback if enroll not found
+                learners.append({
+                    "enroll_id": enroll_id,
+                    "learner_name": f"enroll:{enroll_id}",
+                    "x_coordinate": float(sc.x_coordinate) if sc.x_coordinate is not None else None,
+                    "y_coordinate": float(sc.y_coordinate) if sc.y_coordinate is not None else None,
+                })
+
+        out.append({
+            "cluster_index": cl.cluster_index,
+            "centroid_x": float(cl.centroid_x) if getattr(cl, "centroid_x", None) is not None else None,
+            "centroid_y": float(cl.centroid_y) if getattr(cl, "centroid_y", None) is not None else None,
+            "top_keywords": top_keywords if isinstance(top_keywords, list) else (top_keywords or []),
+            "learners": learners
+        })
+
+    return jsonify({"clusters": out})
 
 
 if __name__ == '__main__':
